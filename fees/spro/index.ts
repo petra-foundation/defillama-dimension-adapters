@@ -14,8 +14,7 @@ type TokenSubgraphData = {
 };
 
 const sdexAddress = "0x5de8ab7e27f6e7a1fff3e5b337584aa43961beef";
-const subgraphUrl =
-  "https://subgraph.satsuma-prod.com/stephanes-team/dev-spro-ethereum-subgraph/version/v0.2.0-c-day/api";
+const subgraphUrl = "https://subgraph.satsuma-prod.com/28e9d214a5ae/stephanes-team/dev-spro-ethereum-subgraph/api";
 
 const getTokenPriceAtTimestamp = async (timestamp: number, tokenAddress: string) => {
   try {
@@ -64,25 +63,24 @@ const getFeesFromSubgraph = async (timestamp: number) => {
       .dailyGlobalMetrics_collection[0];
 
     const dailyTokenMetrics = await getDailyTokenMetrics(timestamp);
-
-    const totalInterestPaids = await Promise.all(
+    const totalInterestPaidsInUsd = await Promise.all(
       dailyTokenMetrics.map(async (token: TokenSubgraphData) => {
         const tokenAddress = token.id.split("-")[1];
         const price = await getTokenPriceAtTimestamp(timestamp, tokenAddress);
         return token.totalInterestPaid * price;
       })
     );
-    const totalInterestPaid = totalInterestPaids.reduce((acc: number, curr: number) => acc + curr, 0);
+    const totalInterestPaidInUsd = totalInterestPaidsInUsd.reduce((acc: number, curr: number) => acc + curr, 0) / 1e18;
     const sdexPrice = await getTokenPriceAtTimestamp(timestamp, sdexAddress);
 
     return {
-      totalSdexBurnt: dailyGlobalMetrics?.totalSdexBurnt * sdexPrice || 0,
-      totalInterestPaid,
+      totalSdexBurntInUsd: (dailyGlobalMetrics?.totalSdexBurnt * sdexPrice) / 1e18 || 0,
+      totalInterestPaidInUsd,
     };
   } catch (error) {
     return {
-      totalSdexBurnt: 0,
-      totalInterestPaid: 0,
+      totalSdexBurntInUsd: 0,
+      totalInterestPaidInUsd: 0,
     };
   }
 };
@@ -90,9 +88,10 @@ const getFeesFromSubgraph = async (timestamp: number) => {
 const fetch = async (_: number, _t: any, options: FetchOptions): Promise<FetchResult> => {
   const timestamp = options.startOfDay;
   const metrics = await getFeesFromSubgraph(timestamp);
+
   return {
-    dailyFees: metrics.totalSdexBurnt + metrics.totalInterestPaid,
-    dailyRevenue: metrics.totalSdexBurnt,
+    dailyFees: metrics.totalSdexBurntInUsd + metrics.totalInterestPaidInUsd,
+    dailyRevenue: metrics.totalSdexBurntInUsd,
   };
 };
 
