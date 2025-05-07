@@ -14,7 +14,7 @@ type TokenSubgraphData = {
 };
 
 const sdexAddress = "0x5de8ab7e27f6e7a1fff3e5b337584aa43961beef";
-const subgraphUrl = "https://subgraph.satsuma-prod.com/28e9d214a5ae/stephanes-team/dev-spro-ethereum-subgraph/api";
+const subgraphUrl = "https://subgraph.satsuma-prod.com/28e9d214a5ae/stephanes-team/prod-spro-ethereum-subgraph/api";
 
 const getTokenPriceAtTimestamp = async (timestamp: number, tokenAddress: string) => {
   try {
