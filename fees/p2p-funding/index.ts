@@ -4,8 +4,8 @@ import type { FetchOptions, FetchResult } from "../../adapters/types";
 import fetchURL from "../../utils/fetchURL";
 
 const headers = {
-  origin: "https://subgraph.satsuma-prod.com",
-  referer: "https://subgraph.satsuma-prod.com",
+  origin: "https://subgraph.smardex.io",
+  referer: "https://subgraph.smardex.io",
 };
 
 type TokenSubgraphData = {
