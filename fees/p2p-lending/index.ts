@@ -14,9 +14,31 @@ type DailyTokenMetric = {
 };
 
 const sdexAddress = "0x5de8ab7e27f6e7a1fff3e5b337584aa43961beef";
-const subgraphUrl = "https://subgraph.smardex.io/ethereum/spro";
+const ethereumSubgraphUrl = "https://subgraph.smardex.io/ethereum/spro";
+const arbitrumSubgraphUrl = "https://subgraph.smardex.io/arbitrum/spro";
+const bscSubgraphUrl = "https://subgraph.smardex.io/bsc/spro";
+const baseSubgraphUrl = "https://subgraph.smardex.io/base/spro";
+const polygonSubgraphUrl = "https://subgraph.smardex.io/polygon/spro";
 
-const getDailyTokenMetrics = async (timestamp: number): Promise<DailyTokenMetric[]> => {
+
+const getSubgraphUrl = (chain: string): string => {
+  switch (chain) {
+    case CHAIN.ETHEREUM:
+      return ethereumSubgraphUrl;
+    case CHAIN.ARBITRUM:
+      return arbitrumSubgraphUrl;
+    case CHAIN.BSC:
+      return bscSubgraphUrl;
+    case CHAIN.BASE:
+      return baseSubgraphUrl;
+    case CHAIN.POLYGON:
+      return polygonSubgraphUrl;
+    default:
+      throw new Error(`Unsupported chain: ${chain}`);
+  }
+};
+
+const getDailyTokenMetrics = async (timestamp: number, chain: string): Promise<DailyTokenMetric[]> => {
   const dailyTokenMetricsQuery = `
       {
         dailyTokenMetrics_collection (where: {
@@ -27,7 +49,8 @@ const getDailyTokenMetrics = async (timestamp: number): Promise<DailyTokenMetric
         }
       }`;
 
-  const result = await request(subgraphUrl, dailyTokenMetricsQuery, {}, headers);
+  const url = getSubgraphUrl(chain);
+  const result = await request(url, dailyTokenMetricsQuery, {}, headers);
   return result.dailyTokenMetrics_collection || [];
 };
 
@@ -36,7 +59,8 @@ const getDailyTokenMetrics = async (timestamp: number): Promise<DailyTokenMetric
  * @param timestamp - The timestamp to fetch fees for.
  * @returns An object containing the total SDEX burnt and daily token metrics.
  */
-const getMetricsFromSubgraph = async (timestamp: number) => {
+
+const getMetricsFromSubgraph = async (timestamp: number, chain: string) => {
   try {
     const dailyGlobalMetricsQuery = `{
       dailyGlobalMetrics_collection (where: {
@@ -46,15 +70,16 @@ const getMetricsFromSubgraph = async (timestamp: number) => {
       }
     }`;
 
-    const dailyGlobalMetrics = (await request(subgraphUrl, dailyGlobalMetricsQuery, {}, headers))
+    const url = getSubgraphUrl(chain);
+    const dailyGlobalMetrics = (await request(url, dailyGlobalMetricsQuery, {}, headers))
       .dailyGlobalMetrics_collection[0];
 
-    const dailyTokenMetrics = await getDailyTokenMetrics(timestamp);
+    const dailyTokenMetrics = await getDailyTokenMetrics(timestamp, chain);
 
     return {
       totalSdexBurnt: dailyGlobalMetrics?.totalSdexBurnt || 0,
       dailyTokenMetrics: dailyTokenMetrics.map((token) => ({
-        // Token id is in the form <timestamp>-<tokenId>
+        // Token id is in format <timestamp>-<tokenId>
         id: token.id.split("-")[1],
         totalInterestPaid: parseFloat(token.totalInterestPaid),
       })),
@@ -67,9 +92,10 @@ const getMetricsFromSubgraph = async (timestamp: number) => {
   }
 };
 
-const fetch = async (_: number, _t: any, { startOfDay, createBalances }: FetchOptions): Promise<FetchResult> => {
+
+const fetch = (chain: string) => async (_: number, _t: any, { startOfDay, createBalances }: FetchOptions): Promise<FetchResult> => {
   const timestamp = startOfDay;
-  const metrics = await getMetricsFromSubgraph(timestamp);
+  const metrics = await getMetricsFromSubgraph(timestamp, chain);
 
   const dailyFees = createBalances();
   const dailyRevenue = createBalances();
@@ -87,17 +113,40 @@ const fetch = async (_: number, _t: any, { startOfDay, createBalances }: FetchOp
   };
 };
 
+
+const methodology = {
+  Fees: "Protocol fees are given by interests paid in credit Tokens by Borrowers to Lenders, cumulated with the amount of SDEX burned at Proposal creation.",
+  Revenue: "Protocol revenue is the total amount of SDEX burned at each new Proposal creation.",
+};
+
+const startDate = "2025-05-22";
+
 const adapter = {
   adapter: {
     [CHAIN.ETHEREUM]: {
-      fetch,
-      start: "2025-05-22",
-      meta: {
-        methodology: {
-          Fees: "Protocol fees are given by interests paid in credit Tokens by Borrowers to Lenders, cumulated with the amount of SDEX burned at Proposal creation.",
-          Revenue: "Protocol revenue is the total amount of SDEX burned at each new Proposal creation.",
-        },
-      },
+      fetch: fetch(CHAIN.ETHEREUM),
+      start: startDate,
+      meta: { methodology },
+    },
+    [CHAIN.ARBITRUM]: {
+      fetch: fetch(CHAIN.ARBITRUM),
+      start: startDate,
+      meta: { methodology },
+    },
+    [CHAIN.BSC]: {
+      fetch: fetch(CHAIN.BSC),
+      start: startDate,
+      meta: { methodology },
+    },
+    [CHAIN.BASE]: {
+      fetch: fetch(CHAIN.BASE),
+      start: startDate,
+      meta: { methodology },
+    },
+    [CHAIN.POLYGON]: {
+      fetch: fetch(CHAIN.POLYGON),
+      start: startDate,
+      meta: { methodology },
     },
   },
   version: 1,
