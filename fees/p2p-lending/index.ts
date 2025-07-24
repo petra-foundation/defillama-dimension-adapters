@@ -13,7 +13,11 @@ type DailyTokenMetric = {
   totalInterestPaid: string;
 };
 
-const sdexAddress = "0x5de8ab7e27f6e7a1fff3e5b337584aa43961beef";
+const ethereumSdexAddress = "0x5de8ab7e27f6e7a1fff3e5b337584aa43961beef";
+const arbitrumSdexAddress = "0xabD587f2607542723b17f14d00d99b987C29b074";
+const bscSdexAddress = "0xFdc66A08B0d0Dc44c17bbd471B88f49F50CdD20F";
+const baseSdexAddress = "0xFd4330b0312fdEEC6d4225075b82E00493FF2e3f";
+const polygonSdexAddress = "0x6899fAcE15c14348E1759371049ab64A3a06bFA6";
 const ethereumSubgraphUrl = "https://subgraph.smardex.io/ethereum/spro";
 const arbitrumSubgraphUrl = "https://subgraph.smardex.io/arbitrum/spro";
 const bscSubgraphUrl = "https://subgraph.smardex.io/bsc/spro";
@@ -92,11 +96,28 @@ const getMetricsFromSubgraph = async (timestamp: number, chain: string) => {
   }
 };
 
+const getSdexAddress = (chain: string): string => {
+  switch (chain) {
+    case CHAIN.ETHEREUM:
+      return ethereumSdexAddress;
+    case CHAIN.ARBITRUM:
+      return arbitrumSdexAddress;
+    case CHAIN.BSC:
+      return bscSdexAddress;
+    case CHAIN.BASE:
+      return baseSdexAddress;
+    case CHAIN.POLYGON:
+      return polygonSdexAddress;
+    default:
+      throw new Error(`Unsupported chain: ${chain}`);
+  }
+};
 
 const fetch = (chain: string) => async (_: number, _t: any, { startOfDay, createBalances }: FetchOptions): Promise<FetchResult> => {
   const timestamp = startOfDay;
   const metrics = await getMetricsFromSubgraph(timestamp, chain);
 
+  const sdexAddress = getSdexAddress(chain);
   const dailyFees = createBalances();
   const dailyRevenue = createBalances();
 
